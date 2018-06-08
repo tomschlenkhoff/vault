@@ -317,7 +317,7 @@ func (d *DynamoDBBackend) Get(ctx context.Context, key string) (*physical.Entry,
 	}
 
 	record := &DynamoDBRecord{}
-	if err := dynamodbattribute.UnmarshalMap(resp.Item, record); err != nil {
+	if err := unmarshalMap(resp.Item, record); err != nil {
 		return nil, err
 	}
 
@@ -415,7 +415,7 @@ func (d *DynamoDBBackend) List(ctx context.Context, prefix string) ([]string, er
 	err := d.client.QueryPages(queryInput, func(out *dynamodb.QueryOutput, lastPage bool) bool {
 		var record DynamoDBRecord
 		for _, item := range out.Items {
-			dynamodbattribute.UnmarshalMap(item, &record)
+			unmarshalMap(item, &record)
 			if !strings.HasPrefix(record.Key, DynamoDBLockPrefix) {
 				keys = append(keys, record.Key)
 			}
@@ -730,7 +730,7 @@ WatchLoop:
 				break WatchLoop
 			}
 			record := &DynamoDBLockRecord{}
-			err = dynamodbattribute.UnmarshalMap(resp.Item, record)
+			err = unmarshalMap(resp.Item, record)
 			if err != nil || string(record.Identity) != l.identity {
 				break WatchLoop
 			}
@@ -786,6 +786,20 @@ func ensureTableExists(client *dynamodb.DynamoDB, table string, readCapacity, wr
 		return err
 	}
 	return nil
+}
+
+// unmarshalMap wraps UnmarshalMap to fall back to the old ConvertFromMap call
+// in case of decoding errors. This is needed since the encoding format is different.
+func unmarshalMap(m map[string]*dynamodb.AttributeValue, out interface{}) error {
+	var err error
+
+	if err = dynamodbattribute.UnmarshalMap(m, out); err != nil {
+		if err := dynamodbattribute.ConvertFromMap(m, out); err == nil {
+			return nil
+		}
+	}
+
+	return err
 }
 
 // recordPathForVaultKey transforms a vault key into
