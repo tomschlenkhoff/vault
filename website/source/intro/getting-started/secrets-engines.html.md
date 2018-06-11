@@ -18,8 +18,8 @@ $ vault write foo/bar a=b
 * no handler for route 'foo/bar'
 ```
 
-The path prefix tells Vault which secrets engine to which it should route
-traffic. When a request comes to Vault, it matches the initial path part using a
+The path prefix tells Vault which secrets engine it should route the traffic
+to. When a request comes to Vault, it matches the initial path part using a
 longest prefix match and then passes the request to the corresponding secrets
 engine enabled at that path.
 
